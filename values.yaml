@@ -327,7 +327,7 @@ revealhold:
 
   static:
     staticimage: "053522176595.dkr.ecr.us-east-1.amazonaws.com/dev/revealhold/static"
-    statictag: "1.0.4"
+    statictag: "1.0.5"
     os: "linux"
     tolerations:
       - key: ratio_balanced
