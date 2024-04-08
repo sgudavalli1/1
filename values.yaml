@@ -1,0 +1,357 @@
+---
+global:
+  # Will the site be public?
+  public: false
+  reloadOnUpgrade: false
+  # -- Image pull secrets to pass to the deployment
+  imagePullSecrets:
+    - name: "test"
+  ecr:
+    enabled: false
+    secret: "reveal-ecr"
+    account: ""
+    # -- ECR AWS Region (default "us-east-1")
+    region: ""
+    # -- Set the full hostname/url for the secret rather than building it with account and region
+    host: ""
+    # -- Docker ECR Password (required)
+    # -- Command: aws ecr get-login-password
+    password: ""
+    # -- Should we run a post install/pre upgrade job to associate the ECR secret with the service account?
+    patchDefaultServiceAccount: true
+
+ingress:
+  # -- The ingress class (set per ingress)
+  # -- Options:
+  # -- alb: (AWS Application Load balancer - https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.1/)
+  # -- nginx: Nginx Ingress (https://kubernetes.github.io/ingress-nginx/)
+  class: "alb"
+  enabled: true
+  # -- Multiple hostnames can be provided if using external DNS, however this may not work for ingress-nginx
+  hostname: ""
+  backend:
+    port: 80
+  class_alb:
+    # -- Set to true to enable the public ingress or false to use an internal ingress
+    # -- Note: The internal ingress is only valid when using the 'alb' class
+    public: true
+    # -- Set to true to enable IPv6/dualstack on the ALB (only valid when using the 'alb' class)
+    ipv6: true
+    # -- Set to true to enable WAF on the ALB (only valid when using the 'alb' class)
+    wafArn: ""
+    # -- sslCertArn is only valid when using the 'alb' class. Leave empty for aut-select
+    sslCertArn: ""
+    # -- Add custom attributes for the alb ingress
+    # -- See: https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.1/guide/service/annotations/#attributes
+    attributes:
+      - key: "routing.http2.enabled"
+        value: "true"
+  # -- Add custom annotations for the public ingress
+  annotations:
+    alb.ingress.kubernetes.io/wafv2-acl-arn: ""
+    alb.ingress.kubernetes.io/shield-advanced-protection: ""
+    alb.ingress.kubernetes.io/security-groups: ""
+    alb.ingress.kubernetes.io/manage-backend-security-group-rules: ""
+    alb.ingress.kubernetes.io/target-group-attributes:
+    alb.ingress.kubernetes.io/ssl-policy:
+  # -- Set to true to enable the creation of a custom ingress based on values
+  custom: false
+  customIngress: {}
+  disableSSLRedirect: false
+  nginx:
+    # -- A custom block for the nginx ingress that gets placed at the top of the ingress `spec` block.
+    spec_extras: {}
+  # -- Force a re-deploy when a helm upgrade happens
+
+revealhold:
+  # -- tolerations for all review containers
+  tolerations:
+    windows:
+      - effect: NoExecute
+        key: node.kubernetes.io/not-ready
+        operator: Exists
+        tolerationSeconds: 300
+      - effect: NoExecute
+        key: node.kubernetes.io/unreachable
+        operator: Exists
+        tolerationSeconds: 300
+    linux:
+      - effect: NoExecute
+        key: node.kubernetes.io/not-ready
+        operator: Exists
+        tolerationSeconds: 300
+      - effect: NoExecute
+        key: node.kubernetes.io/unreachable
+        operator: Exists
+        tolerationSeconds: 300
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "1000m"
+    limits:
+      memory: "4Gi"
+      cpu: "8000m"
+  nodeSelector:
+    windows:
+      "kubernetes.io/os": "windows"
+      "kubernetes.io/arch": "amd64"
+    linux:
+      "kubernetes.io/os": "linux"
+      "kubernetes.io/arch": "amd64"
+  labels:
+    "reveal.app/msa": ""
+
+  reloadOnUpgrade: false
+
+  ui:
+    uiimage: "053522176595.dkr.ecr.us-east-1.amazonaws.com/dev/revealhold/ui"
+    uitag: "1.0.0"
+    os: "linux"
+    tolerations:
+      - key: ratio_balanced
+        value: execution
+        effect: NoSchedule
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "133m"
+      limits:
+        memory: "1Gi"
+        cpu: "2000m"
+    ports:
+      - containerPort: 8113
+    nodeSelector: {}
+    replicas: 1
+    commandOverride: false
+    command: ""
+    args: []
+    listeningPort: 80
+    labels:
+      "reveal.app/revealhold-ui": "revealhold-ui"
+    serviceports:
+      - name: http
+        protocol: TCP
+        port: 80
+        targetPort: 80
+
+  monolithic:
+    monolithicimage: "053522176595.dkr.ecr.us-east-1.amazonaws.com/dev/revealhold/monolithic"
+    monolithictag: "1.0.0"
+    os: "windows"
+    tolerations:
+      - key: windows
+        value: execution
+        effect: NoSchedule
+      - key: ratio_balanced
+        value: execution
+        effect: NoSchedule
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "333m"
+      limits:
+        memory: "4Gi"
+        cpu: "2000m"
+    ports:
+      - containerPort: 8113
+    nodeSelector: {}
+    replicas: 1
+    commandOverride: false
+    command: ""
+    args: []
+    additionalContainers: []
+    volumes: []
+    volumeMounts: []
+    labels:
+      "reveal.app/revealhold": "revealhold-monolithic"
+    serviceports:
+      - name: http
+        protocol: TCP
+        port: 80
+        targetPort: 80
+
+  authentication:
+    authenticationimage: "053522176595.dkr.ecr.us-east-1.amazonaws.com/dev/revealhold/authentication"
+    authenticationtag: "1.0.0"
+    os: "linux"
+    tolerations:
+      - key: ratio_balanced
+        value: execution
+        effect: NoSchedule
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "133m"
+      limits:
+        memory: "1Gi"
+        cpu: "2000m"
+    ports:
+      - containerPort: 8113
+    nodeSelector: {}
+    replicas: 1
+    commandOverride: false
+    command: ""
+    args: []
+    listeningPort: 80
+    labels:
+      "reveal.app/revealhold-authentication": "revealhold-authentication"
+    serviceports:
+      - name: http
+        protocol: TCP
+        port: 80
+        targetPort: 80
+
+  taxonomy:
+    taxonomyimage: "053522176595.dkr.ecr.us-east-1.amazonaws.com/dev/revealhold/taxonomy"
+    taxonomytag: "1.0.0"
+    os: "linux"
+    tolerations:
+      - key: ratio_balanced
+        value: execution
+        effect: NoSchedule
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "133m"
+      limits:
+        memory: "1Gi"
+        cpu: "2000m"
+    ports:
+      - containerPort: 8113
+    nodeSelector: {}
+    replicas: 1
+    commandOverride: false
+    command: ""
+    args: []
+    listeningPort: 80
+    labels:
+      "reveal.app/revealhold-taxonomy": "revealhold-taxonomy"
+    serviceports:
+      - name: http
+        protocol: TCP
+        port: 80
+        targetPort: 80
+
+  reports:
+    reportsimage: "053522176595.dkr.ecr.us-east-1.amazonaws.com/dev/revealhold/reports"
+    reportstag: "1.0.0"
+    os: "linux"
+    tolerations:
+      - key: ratio_balanced
+        value: execution
+        effect: NoSchedule
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "133m"
+      limits:
+        memory: "1Gi"
+        cpu: "2000m"
+    ports:
+      - containerPort: 8113
+    nodeSelector: {}
+    replicas: 1
+    commandOverride: false
+    command: ""
+    args: []
+    listeningPort: 80
+    labels:
+      "reveal.app/revealhold-reports": "revealhold-reports"
+    serviceports:
+      - name: http
+        protocol: TCP
+        port: 80
+        targetPort: 80
+
+  notification:
+    notificationimage: "053522176595.dkr.ecr.us-east-1.amazonaws.com/dev/revealhold/notification"
+    notificationtag: "1.0.0"
+    os: "linux"
+    tolerations:
+      - key: ratio_balanced
+        value: execution
+        effect: NoSchedule
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "133m"
+      limits:
+        memory: "1Gi"
+        cpu: "2000m"
+    ports:
+      - containerPort: 8113
+    nodeSelector: {}
+    replicas: 1
+    commandOverride: false
+    command: ""
+    args: []
+    listeningPort: 80
+    labels:
+      "reveal.app/revealhold-notification": "revealhold-notification"
+    serviceports:
+      - name: http
+        protocol: TCP
+        port: 80
+        targetPort: 80
+
+  request:
+    requestimage: "053522176595.dkr.ecr.us-east-1.amazonaws.com/dev/revealhold/request"
+    requesttag: "1.0.0"
+    os: "linux"
+    tolerations:
+      - key: ratio_balanced
+        value: execution
+        effect: NoSchedule
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "133m"
+      limits:
+        memory: "1Gi"
+        cpu: "2000m"
+    ports:
+      - containerPort: 8113
+    nodeSelector: {}
+    replicas: 1
+    commandOverride: false
+    command: ""
+    args: []
+    listeningPort: 80
+    labels:
+      "reveal.app/revealhold-request": "revealhold-request"
+    serviceports:
+      - name: http
+        protocol: TCP
+        port: 80
+        targetPort: 80
+
+  static:
+    staticimage: "053522176595.dkr.ecr.us-east-1.amazonaws.com/dev/revealhold/static"
+    statictag: "1.0.0"
+    os: "linux"
+    tolerations:
+      - key: ratio_balanced
+        value: execution
+        effect: NoSchedule
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "133m"
+      limits:
+        memory: "1Gi"
+        cpu: "2000m"
+    ports:
+      - containerPort: 8113
+    nodeSelector: {}
+    replicas: 1
+    commandOverride: false
+    command: ""
+    args: []
+    listeningPort: 80
+    labels:
+      "reveal.app/revealhold-static": "revealhold-static"
+    serviceports:
+      - name: http
+        protocol: TCP
+        port: 80
+        targetPort: 80
